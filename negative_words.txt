@@ -1,3 +1,147 @@
-loss
+CEO resignation
+bad news
+bailout
+bank failure
+bank run
+bankrupt
+bankruptcy
+bankruptcy protection
+bear market
+bearish
+bubble burst
+cancel
+canceling
+cancelled
+cancels
+collapse
+collapsed
+collapses
+collapsing
+crash
+crashed
+crashes
+crashing
+credit crunch
+crises
+crisis
+cut
+cuts
+cutting
+debt
+debts
+decline
+declined
+declines
+declining
+default
+delay
+delayed
+delaying
+delays
+disappoint
+disappointed
+disappointing
+disappoints
+downgrade
+downgraded
+downgraded stock
+downgrades
+downgrading
+downturn
+drop
+dropped
+dropping
+drops
 fail
+failed
+failed investment
+failing
+fails
+fall
+fallen
+falls
+fell
+fire
+fired
+fires
+firing
+foreclosure
+fraud
+high risk
+insider trading
+investigated
+investigating
+investigation
+laid off
+lawsuit
+lawsuit filed
+lawsuits
+layoff
+layoffs
+legal action
+liquidation
+losing
+loss
+loss-making
+losses
+lost
+management change
+margin call
+market crash
+market fear
+market manipulation
+market panic
+miss
+missed
+missed expectations
+misses
+negative
+negative earnings
+negatively
+overvalued
+penalties
+penalty
+pessimistic
+plunge
+plunged
+plunges
+plunging
+problem
+problematic
+problems
+recall
+recalled
+recalls
+recession
+regulatory action
+regulatory penalty
 risk
+risky
+scandal
+scandals
+sell pressure
+sell signal
+sell-off
+share price drop
+slowdown
+slowed
+slowing
+slows
+struggle
+struggled
+struggles
+struggling
+uncertain
+uncertainty
+underperform
+underperformed
+underperforming
+underperforms
+unpredictable
+unprofitable
+volatile
+warned
+warning
+warning signs
+warns
+whistleblower
