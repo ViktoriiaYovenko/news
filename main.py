@@ -1,12 +1,10 @@
-from fastapi import FastAPI, Request, Body
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, Request, Query, Body
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from fastapi.param_functions import Query
-import requests
-import os
 from datetime import datetime
+import os
+import httpx
 
 API_KEY = "eb1d1e29-f3e5-439a-bd8a-854dedea419d"
 BASE_URL = "https://newsapi.ai/api/v1/article/getArticles"
@@ -15,14 +13,17 @@ MIN_ARTICLES_REQUIRED = 3
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 
+
 def load_words(path):
     if not os.path.exists(path):
         return []
     with open(path, encoding="utf-8") as f:
         return [line.strip() for line in f if line.strip()]
 
+
 positive_words = load_words("positive_words.txt")
 negative_words = load_words("negative_words.txt")
+
 
 def analyze_sentiment(title):
     title_lower = title.lower()
@@ -35,7 +36,8 @@ def analyze_sentiment(title):
             score -= 1
     return max(min(score, 10), -10)
 
-def get_stock_rating(company, start_date: str, end_date: str):
+
+async def get_stock_rating(company, start_date: str, end_date: str):
     params = {
         "apiKey": API_KEY,
         "keyword": company,
@@ -49,8 +51,10 @@ def get_stock_rating(company, start_date: str, end_date: str):
     }
 
     try:
-        response = requests.get(BASE_URL, params=params, timeout=5)
-        data = response.json()
+        async with httpx.AsyncClient(timeout=5) as client:
+            response = await client.get(BASE_URL, params=params)
+            data = response.json()
+
         articles = data.get("articles", {}).get("results", [])
 
         if not articles:
@@ -86,14 +90,17 @@ def get_stock_rating(company, start_date: str, end_date: str):
         print(f"[ERROR] {company}: {e}")
         return None
 
-def get_external_companies():
+
+async def get_external_companies():
     try:
-        response = requests.get("https://stin_backend.railway.internal/api/stocks", timeout=5)
-        data = response.json()
-        return [item["name"] for item in data if "name" in item]
+        async with httpx.AsyncClient(timeout=5) as client:
+            response = await client.post("https://stinbackend-production.up.railway.app/api/stocks/recommend")
+            data = response.json()
+            return data.get("odeslano", [])
     except Exception as e:
         print(f"[ERROR] external company fetch: {e}")
         return []
+
 
 @app.get("/", response_class=HTMLResponse)
 async def index(
@@ -103,10 +110,10 @@ async def index(
     hide_negative: int = Query(default=0),
     hide_lownews: int = Query(default=0)
 ):
-    tickers = get_external_companies()
+    tickers = await get_external_companies()
     results = []
     for ticker in tickers:
-        result = get_stock_rating(ticker, start, end)
+        result = await get_stock_rating(ticker, start, end)
         if not result:
             continue
         if hide_lownews and result["news_count"] < MIN_ARTICLES_REQUIRED:
@@ -123,20 +130,43 @@ async def index(
         "hide_negative": hide_negative,
         "hide_lownews": hide_lownews
     })
+@app.get("/stocks-data", response_class=JSONResponse)
+async def stocks_data(start: str = Query(default="2025-04-01"),
+                      end: str = Query(default="2025-04-30"),
+                      hide_negative: int = Query(default=0),
+                      hide_lownews: int = Query(default=0)):
+    tickers = await get_external_companies()
+    results = []
+    for ticker in tickers:
+        result = await get_stock_rating(ticker, start, end)
+        if not result:
+            continue
+        if hide_lownews and result["news_count"] < MIN_ARTICLES_REQUIRED:
+            continue
+        if hide_negative and result["rating"] < 0:
+            continue
+        results.append({
+            "name": result["name"],
+            "date": result["date"],
+            "rating": result["rating"],
+            "sell": result["sell"]
+        })
+    return results
+
 
 @app.get("/liststock", response_class=JSONResponse)
 async def liststock(start: str = Query(default="2025-04-01"), end: str = Query(default="2025-04-30")):
-    tickers = get_external_companies()
-    results = [get_stock_rating(ticker, start, end) for ticker in tickers]
-    results = [r for r in results if r]
-    return results
+    tickers = await get_external_companies()
+    results = [await get_stock_rating(ticker, start, end) for ticker in tickers]
+    return [r for r in results if r]
+
 
 @app.get("/recommendations", response_class=JSONResponse)
 async def recommendations(start: str = Query(default="2025-04-01"), end: str = Query(default="2025-04-30")):
-    tickers = get_external_companies()
+    tickers = await get_external_companies()
     results = []
     for ticker in tickers:
-        result = get_stock_rating(ticker, start, end)
+        result = await get_stock_rating(ticker, start, end)
         if result:
             results.append({
                 "name": result["name"],
@@ -145,31 +175,33 @@ async def recommendations(start: str = Query(default="2025-04-01"), end: str = Q
             })
     return results
 
+
 @app.post("/recommendations", response_class=JSONResponse)
 async def receive_recommendations(recommendations: dict = Body(...)):
     if not recommendations:
         return {"error": "Нет данных для обработки"}
 
     processed_recommendations = []
-    
+
     for ticker, data in recommendations.items():
         processed_recommendations.append({
             "name": ticker,
             "declined_last_3_days": data.get("declined_last_3_days", False),
             "more_than_2_declines_last_5_days": data.get("more_than_2_declines_last_5_days", False)
         })
-    
+
     print("Полученные рекомендации:", processed_recommendations)
-    
+
     return {
         "received_recommendations": processed_recommendations,
         "status": "Обработано"
     }
 
+
 @app.get("/external-stocks", response_class=JSONResponse)
 async def external_stocks():
     try:
-        tickers = get_external_companies()
+        tickers = await get_external_companies()
         return [{"name": name} for name in tickers]
     except Exception as e:
         return {"error": str(e)}
