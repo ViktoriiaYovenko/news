@@ -1,113 +1,159 @@
 <!DOCTYPE html>
-<html>
+<html lang="cs">
+
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>📊 Akcie – přehled</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; max-width: 900px; margin: auto; }
-        table { border-collapse: collapse; width: 100%; margin-bottom: 40px; }
-        th, td { padding: 8px; border: 1px solid #ccc; text-align: left; }
-        th { background-color: #f2f2f2; }
-        .sell { background-color: #ffe6e6; }
-        .buy { background-color: #e6ffe6; }
-        h1, h2 { color: #333; }
-        hr { margin: 30px 0; }
-        ul { padding-left: 20px; }
-        li { margin-bottom: 6px; }
+        .sell {
+            background-color: #ffe6e6 !important;
+        }
+
+        .buy {
+            background-color: #e6ffe6 !important;
+        }
+
+        hr {
+            margin: 30px 0;
+        }
     </style>
 </head>
-<body>
-    <h1>📊 Přehled akcií a zpráv</h1>
 
-    <div style="margin-bottom: 20px;">
-        <a href="/liststock" download="liststock.json">
-          <button style="padding: 10px 20px; font-size: 16px;">💾 Stáhnout JSON</button>
-        </a>
+<body class="bg-light text-dark">
+    <div class="container py-4">
+        <h1 class="mb-4 text-center">📊 Přehled akcií a zpráv</h1>
+
+        <div class="mb-4 text-center">
+            <a href="/liststock" download="liststock.json" class="btn btn-success">
+                💾 Stáhnout JSON
+            </a>
+        </div>
+
+        <form method="get" action="/" class="row gy-2 align-items-center mb-4">
+            <div class="col-sm-3">
+                <label class="form-label">Od:</label>
+                <input type="date" name="start" value="{{ start }}" class="form-control">
+            </div>
+            <div class="col-sm-3">
+                <label class="form-label">Do:</label>
+                <input type="date" name="end" value="{{ end }}" class="form-control">
+            </div>
+            <div class="col-sm-3">
+                <div class="form-check mt-4">
+                    <input class="form-check-input" type="checkbox" name="hide_negative" value="1" {% if hide_negative
+                        %}checked{% endif %}>
+                    <label class="form-check-label">📉 Skrýt záporné hodnocení</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="hide_lownews" value="1" {% if hide_lownews
+                        %}checked{% endif %}>
+                    <label class="form-check-label">🔍 Skrýt málo zpráv</label>
+                </div>
+            </div>
+            <div class="col-sm-3 text-end mt-4">
+                <button type="submit" class="btn btn-primary">🔍 Zobrazit</button>
+            </div>
+        </form>
+
+        <div class="table-responsive mb-5">
+            <table class="table table-bordered table-striped align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Společnost</th>
+                        <th>Datum</th>
+                        <th>Hodnocení</th>
+                        <th>Doporučení</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stock in stocks %}
+                    <tr class="{{ 'sell' if stock.sell == 1 else 'buy' }}">
+                        <td>{{ stock.name }}</td>
+                        <td>{{ stock.date }}</td>
+                        <td>{{ stock.rating }}</td>
+                        <td></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div class="text-center my-4">
+                <button onclick="getStockRecommendations()" class="btn btn-outline-primary">
+                    🔁 Aktualizujte doporučení
+                </button>
+            </div>
+            <div class="text-center my-3">
+                <a href="/log" download="log.txt" class="btn btn-secondary">
+                    📥 Stáhnout log
+                </a>
+            </div>
+
+        </div>
+
+        {% for stock in stocks %}
+        <div class="mb-5">
+            <h2>{{ stock.name }} – Zprávy</h2>
+            {% if stock.news %}
+            <ul class="list-group list-group-flush">
+                {% for item in stock.news %}
+                <li class="list-group-item">
+                    <a href="{{ item.url }}" target="_blank">{{ item.title }}</a>
+                    <small class="text-muted">({{ item.source }}, {{ item.date }})</small> –
+                    {% if item.score > 0 %}
+                    <span class="text-success">+{{ item.score }}</span>
+                    {% elif item.score < 0 %} <span class="text-danger">{{ item.score }}</span>
+                        {% else %}
+                        <span class="text-secondary">0</span>
+                        {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p><i>Žádné zprávy</i></p>
+            {% endif %}
+        </div>
+        <hr>
+        {% endfor %}
     </div>
 
-    <form method="get" action="/" style="margin-bottom: 20px;">
-        <label>Od:</label>
-        <input type="date" name="start" value="{{ start }}">
-        <label>Do:</label>
-        <input type="date" name="end" value="{{ end }}">
-        <label style="margin-left: 20px;">
-            <input type="checkbox" name="hide_negative" value="1" {% if hide_negative %}checked{% endif %}>
-            📉 Skrýt záporné hodnocení
-        </label>
-        <label style="margin-left: 20px;">
-            <input type="checkbox" name="hide_lownews" value="1" {% if hide_lownews %}checked{% endif %}>
-            🔍 Skrýt málo zpráv
-        </label>
-        <button type="submit" style="margin-left: 20px;">🔍 Zobrazit</button>
-    </form>
+    <script>
+        async function getStockRecommendations() {
+            const url = "https://stinbackend-production.up.railway.app/api/news";
+            try {
+                const response = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({})
+                });
 
-    <table>
-        <tr>
-            <th>Společnost</th>
-            <th>Datum</th>
-            <th>Hodnocení</th>
-            <th>Doporučení</th>
-        </tr>
-        {% for stock in stocks %}
-        <tr class="{{ 'sell' if stock.sell == 1 else 'buy' }}">
-            <td>{{ stock.name }}</td>
-            <td>{{ stock.date }}</td>
-            <td>{{ stock.rating }}</td>
-            <td>{{ 'Prodat' if stock.sell == 1 else 'Koupit / Držet' }}</td>
-        </tr>
-        {% endfor %}
-    </table>
+                if (!response.ok) {
+                    console.error("Chyba při odesílání:", response.status, response.statusText);
+                    return;
+                }
 
-    {% for stock in stocks %}
-    <h2>{{ stock.name }} – Zprávy</h2>
-    {% if stock.news %}
-        <ul>
-        {% for item in stock.news %}
-            <li>
-                <a href="{{ item.url }}" target="_blank">{{ item.title }}</a>
-                <small>({{ item.source }}, {{ item.date }})</small> –                
-                {% if item.score > 0 %}
-                    <span style="color:green;">+{{ item.score }}</span>
-                {% elif item.score < 0 %}
-                    <span style="color:red;">{{ item.score }}</span>
-                {% else %}
-                    <span style="color:gray;">0</span>
-                {% endif %}
-            </li>
-        {% endfor %}
-        </ul>
-    {% else %}
-        <p><i>Žádné zprávy</i></p>
-    {% endif %}
-    <hr>
-    {% endfor %}
+                const { data } = await response.json();
+                const rows = document.querySelectorAll("table tbody tr");
 
-    <h2>🌍 Doporučení z externí služby</h2>
-{% if external %}
-    <table>
-        <tr>
-            <th>Společnost</th>
-            <th>Hodnocení</th>
-            <th>Doporučení</th>
-        </tr>
-        {% for item in external %}
-        <tr class="{{ 'sell' if item.sell == 1 else 'buy' }}">
-            <td>{{ item.name }}</td>
-            <td>{{ item.rating }}</td>
-            <td>{{ 'Prodat' if item.sell == 1 else 'Koupit / Držet' }}</td>
-        </tr>
-        {% endfor %}
-    </table>
-{% else %}
-    <p><i>Žádná data z externí služby</i></p>
-{% endif %}
+                rows.forEach(row => {
+                    const cells = row.querySelectorAll("td");
+                    if (cells.length < 4) return;
 
-<div style="margin-top: 40px;">
-    <a href="/recommendations" target="_blank">
-        <button style="padding: 10px 20px; font-size: 16px;">📤 Doporučení pro Burzu</button>
-    </a>
-</div>
+                    const name = cells[0].innerText.trim();
+                    const match = data.find(item => item.name === name);
 
+                    if (match) {
+                        cells[3].innerText = match.sell === 1 ? "Prodat" : "Koupit / Držet";
+                        cells[3].classList.remove("sell", "buy");
+                        cells[3].classList.add(match.sell === 1 ? "sell" : "buy");
+                    }
+                });
 
+            } catch (error) {
+                console.error("Chyba:", error);
+            }
+        }
+    </script>
 </body>
+
 </html>
