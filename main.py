@@ -5,6 +5,14 @@ from fastapi.staticfiles import StaticFiles
 from datetime import datetime
 import os
 import httpx
+import logging
+from fastapi.responses import FileResponse
+
+logging.basicConfig(
+    filename="log.txt",
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+)
 
 API_KEY = "eb1d1e29-f3e5-439a-bd8a-854dedea419d"
 BASE_URL = "https://newsapi.ai/api/v1/article/getArticles"
@@ -81,7 +89,6 @@ async def get_stock_rating(company, start_date: str, end_date: str):
             "name": company,
             "date": datetime.now().strftime("%d.%m.%Y"),
             "rating": avg_score,
-            "sell": 1 if avg_score < 0 else 0,
             "news": news,
             "news_count": len(news)
         }
@@ -149,7 +156,6 @@ async def stocks_data(start: str = Query(default="2025-04-01"),
             "name": result["name"],
             "date": result["date"],
             "rating": result["rating"],
-            "sell": result["sell"]
         })
     return results
 
@@ -171,7 +177,6 @@ async def recommendations(start: str = Query(default="2025-04-01"), end: str = Q
             results.append({
                 "name": result["name"],
                 "rating": result["rating"],
-                "sell": result["sell"]
             })
     return results
 
@@ -179,7 +184,7 @@ async def recommendations(start: str = Query(default="2025-04-01"), end: str = Q
 @app.post("/recommendations", response_class=JSONResponse)
 async def receive_recommendations(recommendations: dict = Body(...)):
     if not recommendations:
-        return {"error": "Нет данных для обработки"}
+        return {"error": "Žádná data ke zpracování"}
 
     processed_recommendations = []
 
@@ -190,11 +195,11 @@ async def receive_recommendations(recommendations: dict = Body(...)):
             "more_than_2_declines_last_5_days": data.get("more_than_2_declines_last_5_days", False)
         })
 
-    print("Полученные рекомендации:", processed_recommendations)
+    print("Obdržená doporučení:", processed_recommendations)
 
     return {
         "received_recommendations": processed_recommendations,
-        "status": "Обработано"
+        "status": "Zpracováno"
     }
 
 
@@ -205,3 +210,8 @@ async def external_stocks():
         return [{"name": name} for name in tickers]
     except Exception as e:
         return {"error": str(e)}
+    
+@app.get("/log", response_class=FileResponse)
+async def download_log():
+    return FileResponse("log.txt", media_type="text/plain", filename="log.txt")
+    
