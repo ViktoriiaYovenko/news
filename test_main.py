@@ -203,12 +203,12 @@ def test_recommendations_filter(monkeypatch):
     assert response.json() == [{"name": "CorpX", "rating": -1}]
 
 
-@pytest.mark.asyncio
-async def test_external_stocks_error():
-    with patch("httpx.AsyncClient") as mock_client_class:
-        mock_client = AsyncMock()
-        mock_client.post.side_effect = Exception("API failure")
-        mock_client_class.return_value.__aenter__.return_value = mock_client
+def test_external_stocks_error_client(monkeypatch):
+    async def broken_fetch():
+        raise Exception("API failure")
 
-        response = await main.external_stocks()
-        assert isinstance(response, main.JSONResponse) or "error" in str(response)
+    monkeypatch.setattr(main, "get_external_companies", broken_fetch)
+
+    response = client.get("/external-stocks")
+    assert response.status_code == 200
+    assert "error" in response.json()
