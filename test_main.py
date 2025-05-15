@@ -1,6 +1,5 @@
-
 import pytest
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch, AsyncMock, MagicMock
 from fastapi.testclient import TestClient
 import main
 
@@ -42,9 +41,11 @@ async def test_get_stock_rating():
             ]
         }
     }
+
+    mock_response = MagicMock()
+    mock_response.json.return_value = mock_data  # <-- Обычная функция!
+
     with patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get:
-        mock_response = AsyncMock()
-        mock_response.json = AsyncMock(return_value=mock_data)
         mock_get.return_value.__aenter__.return_value = mock_response
 
         main.positive_words = ["great"]
@@ -56,9 +57,10 @@ async def test_get_stock_rating():
 
 @pytest.mark.asyncio
 async def test_get_external_companies():
+    mock_response = MagicMock()
+    mock_response.json.return_value = {"odeslano": ["A", "B", "C"]}  # <-- обычная
+
     with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
-        mock_response = AsyncMock()
-        mock_response.json = AsyncMock(return_value={"odeslano": ["A", "B", "C"]})
         mock_post.return_value.__aenter__.return_value = mock_response
 
         companies = await main.get_external_companies()
