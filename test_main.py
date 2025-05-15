@@ -1,3 +1,4 @@
+
 import pytest
 from unittest.mock import patch, AsyncMock, MagicMock
 from fastapi.testclient import TestClient
@@ -110,3 +111,52 @@ def test_log_download():
     assert response.status_code == 200
     assert "text/plain" in response.headers["content-type"]
     assert response.headers["content-disposition"].startswith("attachment")
+
+@pytest.mark.asyncio
+async def test_get_stock_rating_no_articles():
+    # Проверка случая, когда статей нет
+    mock_data = {
+        "articles": {
+            "results": []
+        }
+    }
+
+    with patch("httpx.AsyncClient") as mock_client_class:
+        mock_client = AsyncMock()
+        mock_client.get.return_value.json.return_value = mock_data
+        mock_client_class.return_value.__aenter__.return_value = mock_client
+
+        result = await main.get_stock_rating("EmptyCorp", "2025-04-01", "2025-04-30")
+        assert result is None
+
+@pytest.mark.asyncio
+async def test_get_stock_rating_error_handling():
+    # Исключение во время запроса
+    with patch("httpx.AsyncClient") as mock_client_class:
+        mock_client = AsyncMock()
+        mock_client.get.side_effect = Exception("Connection error")
+        mock_client_class.return_value.__aenter__.return_value = mock_client
+
+        result = await main.get_stock_rating("FailCorp", "2025-04-01", "2025-04-30")
+        assert result is None
+
+def test_stocks_data_filters_applied(monkeypatch):
+    # Проверка фильтрации по hide_negative и hide_lownews
+    async def mock_get_external_companies():
+        return ["FilteredCorp"]
+
+    async def mock_get_stock_rating(company, start, end):
+        return {
+            "name": company,
+            "rating": -5,  # отрицательный
+            "news_count": 2,  # меньше 3
+            "date": "01.01.2025",
+            "news": []
+        }
+
+    monkeypatch.setattr(main, "get_external_companies", mock_get_external_companies)
+    monkeypatch.setattr(main, "get_stock_rating", mock_get_stock_rating)
+
+    response = client.get("/stocks-data?hide_negative=1&hide_lownews=1")
+    assert response.status_code == 200
+    assert response.json() == []
