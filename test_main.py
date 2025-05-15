@@ -42,11 +42,14 @@ async def test_get_stock_rating():
         }
     }
 
-    mock_response = MagicMock()
-    mock_response.json.return_value = mock_data  # <-- Обычная функция!
+    # Создаём полноценный мок-ответ с правильным .json
+    mock_response = AsyncMock()
+    mock_response.json.return_value = mock_data
 
-    with patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get:
-        mock_get.return_value.__aenter__.return_value = mock_response
+    # Мокаем контекстный менеджер httpx.AsyncClient().get(...)
+    with patch("httpx.AsyncClient") as mock_client_class:
+        mock_client = mock_client_class.return_value
+        mock_client.__aenter__.return_value.get.return_value = mock_response
 
         main.positive_words = ["great"]
         main.negative_words = []
@@ -57,11 +60,12 @@ async def test_get_stock_rating():
 
 @pytest.mark.asyncio
 async def test_get_external_companies():
-    mock_response = MagicMock()
-    mock_response.json.return_value = {"odeslano": ["A", "B", "C"]}  # <-- обычная
+    mock_response = AsyncMock()
+    mock_response.json.return_value = {"odeslano": ["A", "B", "C"]}
 
-    with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
-        mock_post.return_value.__aenter__.return_value = mock_response
+    with patch("httpx.AsyncClient") as mock_client_class:
+        mock_client = mock_client_class.return_value
+        mock_client.__aenter__.return_value.post.return_value = mock_response
 
         companies = await main.get_external_companies()
         assert companies == ["A", "B", "C"]
