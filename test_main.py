@@ -1,23 +1,20 @@
 
 import pytest
-import asyncio
-import os
 from unittest.mock import patch, AsyncMock
-import main  
+from fastapi.testclient import TestClient
+import main  # <-- правильный импорт
 
-
+client = TestClient(main.app)
 
 def test_analyze_sentiment_positive():
     main.positive_words = ["good", "great"]
     main.negative_words = []
     assert main.analyze_sentiment("This is a good day") > 0
 
-
 def test_analyze_sentiment_negative():
     main.positive_words = []
     main.negative_words = ["bad", "terrible"]
     assert main.analyze_sentiment("This is a terrible situation") < 0
-
 
 def test_analyze_sentiment_mixed():
     main.positive_words = ["nice"]
@@ -25,13 +22,11 @@ def test_analyze_sentiment_mixed():
     score = main.analyze_sentiment("A nice but awful mix")
     assert -10 <= score <= 10
 
-
 def test_load_words(tmp_path):
     path = tmp_path / "words.txt"
     path.write_text("happy\njoyful\n")
     words = main.load_words(str(path))
     assert words == ["happy", "joyful"]
-
 
 @pytest.mark.asyncio
 async def test_get_stock_rating():
@@ -56,21 +51,12 @@ async def test_get_stock_rating():
         assert result["rating"] == 1
         assert result["news_count"] == 1
 
-
 @pytest.mark.asyncio
 async def test_get_external_companies():
     with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
-        mock_post.return_value.json.return_value = {"odeslani": ["A", "B", "C"]}
+        mock_post.return_value.json.return_value = {"odeslano": ["A", "B", "C"]}
         companies = await main.get_external_companies()
         assert companies == ["A", "B", "C"]
-
-
-from fastapi.testclient import TestClient
-from unittest.mock import AsyncMock, patch
-import pytest
-from STIN import main
-
-client = TestClient(main.app)
 
 @pytest.mark.asyncio
 async def test_liststock_route(monkeypatch):
@@ -83,25 +69,21 @@ async def test_liststock_route(monkeypatch):
     monkeypatch.setattr(main, "get_external_companies", mock_get_external_companies)
     monkeypatch.setattr(main, "get_stock_rating", mock_get_stock_rating)
 
-    with TestClient(main.app) as client:
-        response = client.get("/liststock?start=2025-04-01&end=2025-04-30")
-        assert response.status_code == 200
-        assert isinstance(response.json(), list)
-        assert response.json()[0]["name"] == "AAPL"
-
+    response = client.get("/liststock?start=2025-04-01&end=2025-04-30")
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
+    assert response.json()[0]["name"] == "AAPL"
 
 @pytest.mark.asyncio
 async def test_recommendations_post():
-    with TestClient(main.app) as client:
-        response = client.post("/recommendations", json={
-            "AAPL": {
-                "declined_last_3_days": True,
-                "more_than_2_declines_last_5_days": False
-            }
-        })
-        assert response.status_code == 200
-        assert response.json()["status"] == "Zpracováno"
-
+    response = client.post("/recommendations", json={
+        "AAPL": {
+            "declined_last_3_days": True,
+            "more_than_2_declines_last_5_days": False
+        }
+    })
+    assert response.status_code == 200
+    assert response.json()["status"] == "Zpracováno"
 
 def test_log_download():
     response = client.get("/log")
