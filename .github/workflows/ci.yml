@@ -25,5 +25,8 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-asyncio pytest-cov httpx
 
+      - name: Set PYTHONPATH to current directory
+        run: echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
+
       - name: Run tests
         run: pytest --cov=main --cov-report=term-missing
