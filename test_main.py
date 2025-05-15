@@ -43,7 +43,7 @@ async def test_get_stock_rating():
         }
     }
     with patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get:
-        mock_get.return_value.json.return_value = mock_data
+        mock_get.return_value.__aenter__.return_value.json = lambda: mock_data
         main.positive_words = ["great"]
         main.negative_words = []
         result = await main.get_stock_rating("CompanyX", "2025-04-01", "2025-04-30")
@@ -54,7 +54,7 @@ async def test_get_stock_rating():
 @pytest.mark.asyncio
 async def test_get_external_companies():
     with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
-        mock_post.return_value.json.return_value = {"odeslano": ["A", "B", "C"]}
+        mock_post.return_value.__aenter__.return_value.json = lambda: {"odeslano": ["A", "B", "C"]}
         companies = await main.get_external_companies()
         assert companies == ["A", "B", "C"]
 
@@ -86,6 +86,10 @@ async def test_recommendations_post():
     assert response.json()["status"] == "Zpracováno"
 
 def test_log_download():
+    # ensure the file exists before testing
+    with open("log.txt", "w") as f:
+        f.write("Test log entry")
+
     response = client.get("/log")
     assert response.status_code == 200
     assert "text/plain" in response.headers["content-type"]
