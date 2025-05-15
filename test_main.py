@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch, AsyncMock, MagicMock
 from fastapi.testclient import TestClient
 import main
 
@@ -42,10 +42,13 @@ async def test_get_stock_rating():
         }
     }
 
+    # Patch контекстного менеджера и его возвращаемого клиента
     with patch("httpx.AsyncClient") as mock_client_class:
-        mock_client = AsyncMock()
-        mock_client.get.return_value.json.return_value = mock_data
-        mock_client_class.return_value.__aenter__.return_value = mock_client
+        mock_client_instance = AsyncMock()
+        mock_response = MagicMock()
+        mock_response.json.return_value = mock_data
+        mock_client_instance.get.return_value = mock_response
+        mock_client_class.return_value.__aenter__.return_value = mock_client_instance
 
         main.positive_words = ["great"]
         main.negative_words = []
@@ -57,9 +60,11 @@ async def test_get_stock_rating():
 @pytest.mark.asyncio
 async def test_get_external_companies():
     with patch("httpx.AsyncClient") as mock_client_class:
-        mock_client = AsyncMock()
-        mock_client.post.return_value.json.return_value = {"odeslano": ["A", "B", "C"]}
-        mock_client_class.return_value.__aenter__.return_value = mock_client
+        mock_client_instance = AsyncMock()
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"odeslano": ["A", "B", "C"]}
+        mock_client_instance.post.return_value = mock_response
+        mock_client_class.return_value.__aenter__.return_value = mock_client_instance
 
         companies = await main.get_external_companies()
         assert companies == ["A", "B", "C"]
