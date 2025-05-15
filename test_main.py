@@ -1,6 +1,5 @@
-
 import pytest
-from unittest.mock import patch, AsyncMock, MagicMock
+from unittest.mock import patch, AsyncMock
 from fastapi.testclient import TestClient
 import main
 
@@ -43,13 +42,11 @@ async def test_get_stock_rating():
         }
     }
 
-    mock_response = MagicMock()
-    mock_response.json.return_value = mock_data
+    with patch("httpx.AsyncClient") as mock_client_class:
+        mock_client = AsyncMock()
+        mock_client.get.return_value.json.return_value = mock_data
+        mock_client_class.return_value.__aenter__.return_value = mock_client
 
-    mock_client_instance = AsyncMock()
-    mock_client_instance.get.return_value = mock_response
-
-    with patch("httpx.AsyncClient", return_value=mock_client_instance):
         main.positive_words = ["great"]
         main.negative_words = []
         result = await main.get_stock_rating("CompanyX", "2025-04-01", "2025-04-30")
@@ -59,13 +56,11 @@ async def test_get_stock_rating():
 
 @pytest.mark.asyncio
 async def test_get_external_companies():
-    mock_response = MagicMock()
-    mock_response.json.return_value = {"odeslano": ["A", "B", "C"]}
+    with patch("httpx.AsyncClient") as mock_client_class:
+        mock_client = AsyncMock()
+        mock_client.post.return_value.json.return_value = {"odeslano": ["A", "B", "C"]}
+        mock_client_class.return_value.__aenter__.return_value = mock_client
 
-    mock_client_instance = AsyncMock()
-    mock_client_instance.post.return_value = mock_response
-
-    with patch("httpx.AsyncClient", return_value=mock_client_instance):
         companies = await main.get_external_companies()
         assert companies == ["A", "B", "C"]
 
@@ -75,7 +70,13 @@ async def test_liststock_route(monkeypatch):
         return ["AAPL"]
 
     async def mock_get_stock_rating(company, start, end):
-        return {"name": company, "rating": 5, "news": [], "news_count": 3, "date": "01.01.2025"}
+        return {
+            "name": company,
+            "rating": 5,
+            "news": [],
+            "news_count": 3,
+            "date": "01.01.2025"
+        }
 
     monkeypatch.setattr(main, "get_external_companies", mock_get_external_companies)
     monkeypatch.setattr(main, "get_stock_rating", mock_get_stock_rating)
