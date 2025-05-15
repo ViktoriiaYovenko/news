@@ -3,7 +3,8 @@ import pytest
 import asyncio
 import os
 from unittest.mock import patch, AsyncMock
-from STIN import main
+import main  
+
 
 
 def test_analyze_sentiment_positive():
