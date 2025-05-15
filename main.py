@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Query, Body
+чfrom fastapi import FastAPI, Request, Query, Body
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
@@ -14,7 +14,7 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s",
 )
 
-API_KEY = "eb1d1e29-f3e5-439a-bd8a-854dedea419d"
+API_KEY = "2493ec50-b5cb-40ba-a42a-a91a6f185564"
 BASE_URL = "https://newsapi.ai/api/v1/article/getArticles"
 MIN_ARTICLES_REQUIRED = 3
 
