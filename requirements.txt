@@ -3,4 +3,6 @@ uvicorn[standard]
 requests
 jinja2
 httpx
-
+pytest
+pytest-asyncio
+pytest-cov
